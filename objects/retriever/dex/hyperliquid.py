@@ -116,7 +116,8 @@ def main():
     print(tracker.metadata_df)
 
     # Fetch historical prices for all available markets
-    historical_prices = tracker.get_historical_prices(interval='1h')
+    historical_prices = tracker.get_historical_prices(interval='1h',file_name = 'hourly_prices')
+    historical_daily_prices = tracker.get_historical_prices(interval='1d', file_name='daily_prices')
     for symbol, df in historical_prices.items():
         print(f"Historical prices for {symbol}:")
         print(df.head())
