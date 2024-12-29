@@ -1,9 +1,7 @@
-from objects.data_manipulation.splitter import Splitter
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
-from sklearn.metrics import mean_squared_error, r2_score
+from objects.data_manipulation.backtester.splitter import Splitter
+from sklearn.ensemble import RandomForestClassifier
 from utils.helpers.pandas_helpers import keep_levels,index_slice
 from loguru import logger
-import numpy as np
 import pandas as pd
 
 

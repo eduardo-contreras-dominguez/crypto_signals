@@ -99,4 +99,67 @@ class SignalSelector:
             # Store the calculated crossover signal for the asset
             crossover_signals[asset] = asset_crossover_signal
 
-        return crossover_signals
+    @staticmethod
+    def macd(signal_df: pd.DataFrame, short_window: int, long_window: int,
+                                  combination_window: int = 9, signal_level: str = 'window',
+                                  asset_level: str = 'asset') -> pd.DataFrame:
+        """
+        Calculate MACD and Signal Line for each asset using given short and long windows.
+
+        Args:
+        - signal_df (pd.DataFrame): DataFrame containing signals for multiple assets across various windows.
+        - short_window (int): The period for the short-term (fast) EMA.
+        - long_window (int): The period for the long-term (slow) EMA.
+        - combination_window (int): The period for the Signal Line (default is 9).
+        - window_level (str): The MultiIndex level that corresponds to the window.
+        - asset_level (str): The MultiIndex level that corresponds to the asset.
+
+        Returns:
+        - pd.DataFrame: DataFrame with the MACD and Signal Line for each asset.
+        """
+        # Initialize an empty DataFrame to store MACD and Signal Line for each asset
+        macd_df = pd.DataFrame(index=signal_df.index)
+        all_macd = []
+        all_signal = []
+        macd_signal_df = pd.DataFrame(index=signal_df.index)
+        # Loop through each unique asset
+        for asset in signal_df.columns.get_level_values(asset_level).unique():
+            macd_df = pd.DataFrame(columns = ['timestamp', 'value', 'symbol', 'signal'])
+            macd_signal_df = pd.DataFrame(columns = ['timestamp', 'value', 'symbol', 'signal'])
+            # Extract signals for the current asset
+            asset_signal = keep_levels(index_slice(signal_df, **{asset_level : asset}), signal_level)
+
+            short_element = [element for element in asset_signal.columns.get_level_values(signal_level).unique() if f'{short_window}' in element]
+            long_element = [element for element in asset_signal.columns.get_level_values(signal_level).unique() if f'{long_window}' in element]
+            # Select short-term and long-term signals based on the window_level
+            short_term_signal = index_slice(asset_signal, **{signal_level : short_element})
+            long_term_signal = index_slice(asset_signal, **{signal_level : long_element})
+
+            # Calculate the MACD: the difference between the short-term and long-term EMAs
+            macd = short_term_signal.values - long_term_signal.values
+
+            # Calculate the Signal Line: the EMA of the MACD
+            macd_df['value'] = macd.flatten()
+            macd_df['timestamp'] = asset_signal.index.tolist()
+            macd_df['symbol'] = asset
+            macd_df['signal'] = f'macd_{short_element[0]}_{long_element[0]}'
+            all_macd.append(macd_df)
+
+            macd_signal_df['value'] = pd.DataFrame(macd.flatten()).ewm(span=combination_window, adjust=False).mean().values.flatten()
+            macd_signal_df['timestamp'] = macd_df['timestamp'].tolist()
+            macd_signal_df['symbol'] = asset
+            macd_signal_df['signal'] = f'signal_macd_{short_element[0]}_{long_element[0]}_{combination_window}'
+            all_signal.append(macd_signal_df)
+        output_macd_df = pd.concat(all_macd)
+        pivot_macd = output_macd_df.pivot_table(
+            index='timestamp',
+            columns=['symbol', 'signal'],
+            values='value'
+        )
+        output_signal_df = pd.concat(all_signal)
+        pivot_signal = output_signal_df.pivot_table(
+            index='timestamp',
+            columns=['symbol', 'signal'],
+            values='value'
+        )
+        return pivot_signal, pivot_macd

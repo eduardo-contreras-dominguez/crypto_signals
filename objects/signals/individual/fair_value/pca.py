@@ -2,13 +2,15 @@ import pandas as pd
 import numpy as np
 from sklearn.decomposition import PCA as SklearnPCA
 from sklearn.preprocessing import StandardScaler
+
+from objects.data_manipulation.covariance import Covariance
 from loguru import logger
 from tqdm import tqdm
 
 from utils.helpers.pandas_helpers import keep_levels, index_slice
 class PCA:
     @staticmethod
-    def rolling_pca(prices_df, windows):
+    def rolling_pca(prices_df, windows, covariance_mode = 'simple'):
         """
         Perform a rolling PCA on the given prices DataFrame for the specified windows.
 
@@ -42,7 +44,10 @@ class PCA:
                 normalized_prices = (rolling_prices - mean) / std
 
                 # Step 2: Compute the covariance matrix of the normalized prices
-                covariance_matrix = np.cov(normalized_prices.T)
+                if covariance_mode == 'simple':
+                    covariance_matrix = Covariance.simple(normalized_prices)
+                elif covariance_mode == 'exponential':
+                    covariance_matrix = Covariance.exponential(normalized_prices)
 
                 # Step 3: Calculate eigenvalues and eigenvectors of the covariance matrix
                 eigenvalues, eigenvectors = np.linalg.eig(covariance_matrix)
